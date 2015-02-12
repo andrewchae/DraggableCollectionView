@@ -76,4 +76,11 @@
     [data2 insertObject:index atIndex:toIndexPath.item];
 }
 
+- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
+    [[sections objectAtIndex:indexPath.section] objectAtIndex:indexPath.row];
+    
+    return CGSizeMake(100, 100);
+//    return indexPath.row == 0 ?  CGSizeMake(200, 100) : CGSizeMake(100, 100);
+}
+
 @end

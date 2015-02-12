@@ -58,7 +58,27 @@
             layoutAttributes.indexPath = [NSIndexPath indexPathForItem:[collectionView numberOfItemsInSection:toIndexPath.section]
                                                              inSection:toIndexPath.section];
             if (layoutAttributes.indexPath.item != 0) {
-                layoutAttributes.center = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:layoutAttributes.indexPath].center;
+                CGPoint previousCenter = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:[collectionView numberOfItemsInSection:toIndexPath.section] - 2 inSection:toIndexPath.section]].center;
+                CGPoint currentCenter = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:[collectionView numberOfItemsInSection:toIndexPath.section] - 1 inSection:toIndexPath.section]].center;
+                
+                
+                
+                layoutAttributes.center = CGPointMake(currentCenter.x + currentCenter.x - previousCenter.x, currentCenter.y);
+                
+                
+                // If its going outside collection view on left, then move it
+                if (layoutAttributes.center.x < 0) {
+                    // standart spacing:
+                    CGPoint centerMinus3 = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:[collectionView numberOfItemsInSection:toIndexPath.section] - 3 inSection:toIndexPath.section]].center;
+                    CGPoint centerMinus2 = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:[collectionView numberOfItemsInSection:toIndexPath.section] - 2 inSection:toIndexPath.section]].center;
+                    
+                    CGFloat widthMinus2 = [self.collectionViewLayout layoutAttributesForItemAtIndexPath:[NSIndexPath indexPathForItem:[collectionView numberOfItemsInSection:toIndexPath.section] - 2 inSection:toIndexPath.section]].size.width;
+                    
+                    CGFloat spacing = centerMinus2.x - centerMinus3.x - widthMinus2;
+                    
+                    layoutAttributes.center = CGPointMake(layoutAttributes.center.x + collectionView.frame.size.width + spacing, layoutAttributes.center.y);
+                }
+                    
             }
         }
         NSIndexPath *indexPath = layoutAttributes.indexPath;
