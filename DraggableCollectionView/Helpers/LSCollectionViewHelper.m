@@ -37,6 +37,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     _ScrollingDirection scrollingDirection;
     BOOL canWarp;
     BOOL canScroll;
+	BOOL _hasShouldAlterTranslationDelegateMethod;
 }
 @property (readonly, nonatomic) LSCollectionViewLayoutHelper *layoutHelper;
 @end
@@ -63,7 +64,7 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         _panPressGestureRecognizer = [[UIPanGestureRecognizer alloc]
                                       initWithTarget:self action:@selector(handlePanGesture:)];
         _panPressGestureRecognizer.delegate = self;
-
+		
         [_collectionView addGestureRecognizer:_panPressGestureRecognizer];
         
         for (UIGestureRecognizer *gestureRecognizer in _collectionView.gestureRecognizers) {
@@ -108,8 +109,8 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
 }
 
 - (UIImage *)imageFromCell:(UICollectionViewCell *)cell {
-    UIGraphicsBeginImageContextWithOptions(cell.bounds.size, cell.isOpaque, 0.0f);
-    [cell.layer renderInContext:UIGraphicsGetCurrentContext()];
+    UIGraphicsBeginImageContextWithOptions(cell.bounds.size, NO, 0);
+	[cell.layer renderInContext:UIGraphicsGetCurrentContext()];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     return image;
@@ -218,6 +219,8 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
         return;
     }
     
+	_hasShouldAlterTranslationDelegateMethod = [self.collectionView.dataSource respondsToSelector:@selector(collectionView:alterTranslation:)];
+	
     NSIndexPath *indexPath = [self indexPathForItemClosestToPoint:[sender locationInView:self.collectionView]];
     
     switch (sender.state) {
@@ -238,12 +241,13 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             mockCell.image = [self imageFromCell:cell];
             mockCenter = mockCell.center;
             [self.collectionView addSubview:mockCell];
-            [UIView
-             animateWithDuration:0.3
-             animations:^{
-                 mockCell.transform = CGAffineTransformMakeScale(1.1f, 1.1f);
-             }
-             completion:nil];
+			if ([self.collectionView.dataSource respondsToSelector:@selector(collectionView:transformForDraggingItemAtIndexPath:duration:)]) {
+				NSTimeInterval duration = 0.3;
+				CGAffineTransform transform = [(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource collectionView:self.collectionView transformForDraggingItemAtIndexPath:indexPath duration:&duration];
+				[UIView animateWithDuration:duration animations:^{
+					mockCell.transform = transform;
+				} completion:nil];
+			}
             
             // Start warping
             lastIndexPath = indexPath;
@@ -312,8 +316,8 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
             collectionView:self.collectionView
             canMoveItemAtIndexPath:self.layoutHelper.fromIndexPath
             toIndexPath:indexPath] == NO) {
-        return;
-    }
+			return;
+		}
     [self.collectionView performBatchUpdates:^{
         self.layoutHelper.hideIndexPath = indexPath;
         self.layoutHelper.toIndexPath = indexPath;
@@ -325,6 +329,9 @@ typedef NS_ENUM(NSInteger, _ScrollingDirection) {
     if(sender.state == UIGestureRecognizerStateChanged) {
         // Move mock to match finger
         fingerTranslation = [sender translationInView:self.collectionView];
+		if (_hasShouldAlterTranslationDelegateMethod) {
+			[(id<UICollectionViewDataSource_Draggable>)self.collectionView.dataSource collectionView:self.collectionView alterTranslation:&fingerTranslation];
+		}
         mockCell.center = _CGPointAdd(mockCenter, fingerTranslation);
         
         // Scroll when necessary
